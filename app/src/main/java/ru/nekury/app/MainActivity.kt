@@ -39,6 +39,9 @@ private val startedKey = longPreferencesKey("quit_started")
 private val priceKey = doublePreferencesKey("pack_price")
 private val perDayKey = intPreferencesKey("cigs_per_day")
 private val packKey = intPreferencesKey("pack_size")
+private val cravingKey = intPreferencesKey("craving_count")
+private val relapseKey = intPreferencesKey("relapse_count")
+private val noteKey = androidx.datastore.preferences.core.stringPreferencesKey("craving_note")
 private val green = Color(0xFF65E6A1)
 private val bg = Color(0xFF07110D)
 private val panel = Color(0xFF102019)
@@ -65,6 +68,10 @@ class MainActivity : ComponentActivity() {
             var packText by remember { mutableStateOf("20") }
             var dateError by remember { mutableStateOf(false) }
             var settingsInitialized by remember { mutableStateOf(false) }
+            var noteInitialized by remember { mutableStateOf(false) }
+            var priceError by remember { mutableStateOf(false) }
+            var perDayError by remember { mutableStateOf(false) }
+            var packError by remember { mutableStateOf(false) }
             var tick by remember { mutableLongStateOf(System.currentTimeMillis()) }
             LaunchedEffect(Unit) {
                 while (true) {
@@ -80,6 +87,14 @@ class MainActivity : ComponentActivity() {
             val price = if (storedPrice < 1.0) 300.0 else storedPrice
             val perDay = prefs?.get(perDayKey) ?: 15
             val pack = prefs?.get(packKey) ?: 20
+            LaunchedEffect(prefs) {
+                if (prefs != null && !noteInitialized) {
+                    cravingCount = prefs?.get(cravingKey) ?: 0
+                    relapseCount = prefs?.get(relapseKey) ?: 0
+                    note = prefs?.get(noteKey) ?: ""
+                    noteInitialized = true
+                }
+            }
             LaunchedEffect(prefs) {
                 if (prefs != null && !settingsInitialized) {
                     priceText = price.toString()
@@ -127,7 +142,10 @@ class MainActivity : ComponentActivity() {
                                 OutlinedButton(onClick = {
                                     try {
                                         val formatter = SimpleDateFormat("dd.MM.yyyy", Locale("ru", "RU")).apply { isLenient = false }
-                                        val parsed = formatter.parse(quitDateText.trim()) ?: throw IllegalArgumentException()
+                                        val trimmedDate = quitDateText.trim()
+                                        val parsePosition = java.text.ParsePosition(0)
+                                        val parsed = formatter.parse(trimmedDate, parsePosition)
+                                        if (parsed == null || parsePosition.index != trimmedDate.length) throw IllegalArgumentException()
                                         val calendar = java.util.Calendar.getInstance().apply {
                                             time = parsed
                                             set(java.util.Calendar.HOUR_OF_DAY, 0)
@@ -178,21 +196,28 @@ class MainActivity : ComponentActivity() {
                         Text("Дневник тяги", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color.White)
                         OutlinedTextField(
                             value = note,
-                            onValueChange = { note = it },
+                            onValueChange = { value ->
+                                note = value
+                                scope.launch { dataStore.edit { it[noteKey] = value } }
+                            },
                             label = { Text("Что чувствуешь сейчас?") },
                             modifier = Modifier.fillMaxWidth(),
                             minLines = 2
                         )
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             Button(
-                                onClick = { cravingCount++; note = "" },
+                                onClick = {
+                                    cravingCount++
+                                    note = ""
+                                    scope.launch { dataStore.edit { it[cravingKey] = cravingCount; it[noteKey] = "" } }
+                                },
                                 modifier = Modifier.weight(1f),
                                 colors = ButtonDefaults.buttonColors(containerColor = green)
                             ) { Text("Пережил тягу", color = bg) }
                             OutlinedButton(
                                 onClick = {
                                     relapseCount++
-                                    scope.launch { dataStore.edit { it[startedKey] = System.currentTimeMillis() } }
+                                    scope.launch { dataStore.edit { it[relapseKey] = relapseCount; it[startedKey] = System.currentTimeMillis() } }
                                 },
                                 modifier = Modifier.weight(1f)
                             ) {
