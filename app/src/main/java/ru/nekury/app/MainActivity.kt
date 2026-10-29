@@ -64,6 +64,7 @@ class MainActivity : ComponentActivity() {
             var perDayText by remember { mutableStateOf("15") }
             var packText by remember { mutableStateOf("20") }
             var dateError by remember { mutableStateOf(false) }
+            var settingsInitialized by remember { mutableStateOf(false) }
             var tick by remember { mutableLongStateOf(System.currentTimeMillis()) }
             LaunchedEffect(Unit) {
                 while (true) {
@@ -76,12 +77,17 @@ class MainActivity : ComponentActivity() {
                 quitDateText = SimpleDateFormat("dd.MM.yyyy", Locale("ru", "RU")).format(Date(started))
             }
             val storedPrice = prefs?.get(priceKey) ?: 300.0
-            val price = if (storedPrice < 100.0) 300.0 else storedPrice
-            LaunchedEffect(price) { priceText = price.toInt().toString() }
+            val price = if (storedPrice < 1.0) 300.0 else storedPrice
             val perDay = prefs?.get(perDayKey) ?: 15
-            LaunchedEffect(perDay) { perDayText = perDay.toString() }
             val pack = prefs?.get(packKey) ?: 20
-            LaunchedEffect(pack) { packText = pack.toString() }
+            LaunchedEffect(prefs) {
+                if (prefs != null && !settingsInitialized) {
+                    priceText = price.toString()
+                    perDayText = perDay.toString()
+                    packText = pack.toString()
+                    settingsInitialized = true
+                }
+            }
             val elapsed = (tick - started).coerceAtLeast(0)
             val days = TimeUnit.MILLISECONDS.toDays(elapsed)
             val hours = TimeUnit.MILLISECONDS.toHours(elapsed) % 24
