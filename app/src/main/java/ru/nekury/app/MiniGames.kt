@@ -1,5 +1,6 @@
 package ru.nekury.app
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -8,6 +9,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -127,14 +130,55 @@ private fun RaceGame(onScore: (Int) -> Unit) {
 @Composable
 private fun JumpGame(onScore: (Int) -> Unit) {
     var score by remember { mutableIntStateOf(0) }
+    var obstacleX by remember { mutableFloatStateOf(1.0f) }
+    var jumpTicks by remember { mutableIntStateOf(0) }
     var ended by remember { mutableStateOf(false) }
-    GameCard("🪂 Прыгун", "Прыгай через случайные препятствия и набирай очки.") {
-        Text(if (ended) "💥" else "🧑‍🚀", fontSize = 48.sp, modifier = Modifier.align(Alignment.CenterHorizontally))
-        Text(if (ended) "Падение! Результат: " + score else "Платформа впереди — прыгай!", color = Color.White, fontSize = 18.sp)
-        Text("Очки: " + score, color = gameGreen, fontSize = 22.sp, fontWeight = FontWeight.Bold)
-        GameButton(if (ended) "Новая попытка" else "Прыжок!", {
-            if (ended) { score = 0; ended = false }
-            else if (Random.nextInt(100) < 18) { ended = true; onScore(score) } else score++
+
+    LaunchedEffect(ended) {
+        while (!ended) {
+            delay(70)
+            obstacleX -= 0.035f
+            if (jumpTicks > 0) jumpTicks--
+            if (obstacleX <= 0.12f) {
+                if (jumpTicks == 0) {
+                    ended = true
+                    onScore(score)
+                } else {
+                    score++
+                    obstacleX = 1.0f
+                }
+            }
+        }
+    }
+
+    GameCard("🪂 Прыгун", "Нажимай на игровое поле, чтобы перепрыгивать препятствия. Не дай герою столкнуться!") {
+        Canvas(
+            modifier = Modifier.fillMaxWidth().height(220.dp)
+                .clickable { if (!ended) jumpTicks = 7 }
+        ) {
+            val w = size.width
+            val h = size.height
+            drawRoundRect(color = Color(0xFF183B2D), size = Size(w, h), cornerRadius = androidx.compose.ui.geometry.CornerRadius(22f, 22f))
+            // sky and distant hills
+            drawCircle(color = Color(0xFF24533D), radius = w * 0.22f, center = Offset(w * 0.82f, h * 0.22f))
+            drawCircle(color = Color(0xFF1D4935), radius = w * 0.28f, center = Offset(w * 0.12f, h * 0.84f))
+            val groundY = h * 0.82f
+            drawLine(color = gameGreen, start = Offset(0f, groundY), end = Offset(w, groundY), strokeWidth = 5f)
+            val playerX = w * 0.20f
+            val playerY = if (jumpTicks > 0) h * 0.36f else h * 0.65f
+            // little astronaut hero
+            drawCircle(color = Color(0xFFE7F4EE), radius = 23f, center = Offset(playerX, playerY))
+            drawCircle(color = Color(0xFF73BDF2), radius = 15f, center = Offset(playerX, playerY))
+            drawRoundRect(color = Color(0xFFE7F4EE), topLeft = Offset(playerX - 18f, playerY + 17f), size = Size(36f, 30f), cornerRadius = androidx.compose.ui.geometry.CornerRadius(10f, 10f))
+            val ox = w * obstacleX
+            drawRoundRect(color = Color(0xFFFFB547), topLeft = Offset(ox - 18f, groundY - 42f), size = Size(36f, 42f), cornerRadius = androidx.compose.ui.geometry.CornerRadius(8f, 8f))
+            drawRect(color = Color(0xFF9B5B24), topLeft = Offset(ox - 18f, groundY - 16f), size = Size(36f, 7f))
+        }
+        Text("Очки: $score", color = gameGreen, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+        Text(if (ended) "Столкновение! Попробуй ещё раз." else "Коснись игрового поля для прыжка", color = Color.White)
+        GameButton(if (ended) "Играть снова" else "Прыжок!", {
+            if (ended) { score = 0; obstacleX = 1.0f; jumpTicks = 0; ended = false }
+            else jumpTicks = 7
         }, Modifier.fillMaxWidth())
     }
 }
