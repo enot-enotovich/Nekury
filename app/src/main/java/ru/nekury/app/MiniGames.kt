@@ -36,7 +36,8 @@ fun MiniGamesSection() {
                 Triple("jump", "🪂 Прыгун", "Прыгай по платформам и набирай очки"),
                 Triple("reflex", "⚡ Молниеносная реакция", "Проверь скорость пальцев"),
                 Triple("memory", "🧠 Тренировка памяти", "Повтори последовательность цветов"),
-                Triple("math", "🔢 Быстрый счёт", "Решай примеры на скорость")
+                Triple("math", "🔢 Быстрый счёт", "Решай примеры на скорость"),
+                Triple("tetris", "🧱 Тетрис", "Собирай линии из падающих фигур")
             )
             games.forEach { game ->
                 Card(modifier = Modifier.fillMaxWidth().clickable { selected = game.first },
@@ -60,6 +61,7 @@ fun MiniGamesSection() {
                 "reflex" -> ReflexGame { s -> bestScores = bestScores + ("reflex" to maxOf(s, bestScores["reflex"] ?: 0)) }
                 "memory" -> MemoryGame { s -> bestScores = bestScores + ("memory" to maxOf(s, bestScores["memory"] ?: 0)) }
                 "math" -> MathGame { s -> bestScores = bestScores + ("math" to maxOf(s, bestScores["math"] ?: 0)) }
+                "tetris" -> TetrisGame { s -> bestScores = bestScores + ("tetris" to maxOf(s, bestScores["tetris"] ?: 0)) }
             }
         }
     }
@@ -302,6 +304,113 @@ private fun MemoryGame(onScore: (Int) -> Unit) {
             sequence = listOf(Random.nextInt(4)); input = emptyList(); wrong = false; showing = true
         }, Modifier.fillMaxWidth())
         Text("Уровень: " + sequence.size, color = gameGreen, fontWeight = FontWeight.Bold)
+    }
+}
+
+
+@Composable
+private fun TetrisGame(onScore: (Int) -> Unit) {
+    val rows = 18
+    val cols = 10
+    val palette = listOf(Color(0xFF43F0A3), Color(0xFF66A6FF), Color(0xFFFFC857), Color(0xFFFF6B6B), Color(0xFFC792EA), Color(0xFF4DD0E1), Color(0xFFFF9F68))
+    val shapes = listOf(
+        listOf(0 to 0, 1 to 0, 2 to 0, 3 to 0),
+        listOf(0 to 0, 1 to 0, 0 to 1, 1 to 1),
+        listOf(1 to 0, 0 to 1, 1 to 1, 2 to 1),
+        listOf(0 to 0, 0 to 1, 1 to 1, 2 to 1),
+        listOf(2 to 0, 0 to 1, 1 to 1, 2 to 1),
+        listOf(1 to 0, 2 to 0, 0 to 1, 1 to 1),
+        listOf(0 to 0, 1 to 0, 1 to 1, 2 to 1)
+    )
+    var board by remember { mutableStateOf(List(rows) { List(cols) { -1 } }) }
+    var piece by remember { mutableStateOf(shapes.random()) }
+    var pieceColor by remember { mutableIntStateOf(Random.nextInt(palette.size)) }
+    var px by remember { mutableIntStateOf(3) }
+    var py by remember { mutableIntStateOf(0) }
+    var score by remember { mutableIntStateOf(0) }
+    var ended by remember { mutableStateOf(false) }
+    var tick by remember { mutableIntStateOf(0) }
+
+    fun collides(shape: List<Pair<Int, Int>>, x: Int, y: Int, grid: List<List<Int>>): Boolean =
+        shape.any { (dx, dy) ->
+            val xx = x + dx
+            val yy = y + dy
+            xx < 0 || xx >= cols || yy >= rows || (yy >= 0 && grid[yy][xx] >= 0)
+        }
+
+    fun spawn(grid: List<List<Int>>) {
+        piece = shapes.random()
+        pieceColor = Random.nextInt(palette.size)
+        px = 3
+        py = 0
+        if (collides(piece, px, py, grid)) {
+            ended = true
+            onScore(score)
+        }
+    }
+
+    fun stepDown() {
+        if (ended) return
+        if (!collides(piece, px, py + 1, board)) {
+            py++
+        } else {
+            val next = board.map { it.toMutableList() }.toMutableList()
+            piece.forEach { (dx, dy) ->
+                val x = px + dx
+                val y = py + dy
+                if (y in 0 until rows && x in 0 until cols) next[y][x] = pieceColor
+            }
+            val kept = next.filter { row -> row.any { it < 0 } }
+            val cleared = rows - kept.size
+            board = List(cleared) { List(cols) { -1 } } + kept.map { it.toList() }
+            score += when (cleared) { 1 -> 100; 2 -> 250; 3 -> 400; 4 -> 700; else -> 0 }
+            spawn(board)
+        }
+        tick++
+    }
+
+    LaunchedEffect(ended) {
+        while (!ended) {
+            delay((480 - (score / 100) * 15).coerceAtLeast(140).toLong())
+            stepDown()
+        }
+    }
+
+    GameCard("🧱 Тетрис", "Сдвигай и поворачивай падающие фигуры. Заполняй линии без пробелов!") {
+        Canvas(Modifier.fillMaxWidth().height(330.dp)) {
+            val cell = minOf(size.width / cols, size.height / rows)
+            val left = (size.width - cell * cols) / 2f
+            val top = (size.height - cell * rows) / 2f
+            drawRoundRect(Color(0xFF07140F), topLeft = Offset(left, top), size = Size(cell * cols, cell * rows), cornerRadius = androidx.compose.ui.geometry.CornerRadius(10f, 10f))
+            for (y in 0 until rows) for (x in 0 until cols) {
+                val value = board[y][x]
+                if (value >= 0) {
+                    drawRoundRect(palette[value], topLeft = Offset(left + x * cell + 1f, top + y * cell + 1f), size = Size(cell - 2f, cell - 2f), cornerRadius = androidx.compose.ui.geometry.CornerRadius(3f, 3f))
+                } else {
+                    drawRoundRect(Color(0xFF1A3026), topLeft = Offset(left + x * cell + 1f, top + y * cell + 1f), size = Size(cell - 2f, cell - 2f), cornerRadius = androidx.compose.ui.geometry.CornerRadius(2f, 2f))
+                }
+            }
+            if (!ended) piece.forEach { (dx, dy) ->
+                val x = px + dx
+                val y = py + dy
+                if (x in 0 until cols && y in 0 until rows) drawRoundRect(palette[pieceColor], topLeft = Offset(left + x * cell + 1f, top + y * cell + 1f), size = Size(cell - 2f, cell - 2f), cornerRadius = androidx.compose.ui.geometry.CornerRadius(3f, 3f))
+            }
+        }
+        Text("Очки: $score", color = gameGreen, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+        if (ended) Text("Игра окончена! Результат: $score", color = Color.White)
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            GameButton("←", { if (ended) { board = List(rows) { List(cols) { -1 } }; score = 0; ended = false; spawn(board) } else if (!collides(piece, px - 1, py, board)) px-- }, Modifier.weight(1f))
+            GameButton("↻", {
+                if (!ended) {
+                    val rotated = piece.map { (x, y) -> (2 - y) to x }
+                    if (!collides(rotated, px, py, board)) piece = rotated
+                }
+            }, Modifier.weight(1f))
+            GameButton("↓", { if (!ended) stepDown() }, Modifier.weight(1f))
+            GameButton("→", { if (ended) { board = List(rows) { List(cols) { -1 } }; score = 0; ended = false; spawn(board) } else if (!collides(piece, px + 1, py, board)) px++ }, Modifier.weight(1f))
+        }
+        GameButton("Быстро вниз", { if (!ended) repeat(3) { stepDown() } }, Modifier.fillMaxWidth())
+        if (ended) GameButton("Играть снова", { board = List(rows) { List(cols) { -1 } }; score = 0; ended = false; px = 3; py = 0; spawn(board) }, Modifier.fillMaxWidth())
     }
 }
 
