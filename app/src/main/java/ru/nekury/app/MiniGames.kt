@@ -106,7 +106,7 @@ private fun TowerGame(onScore: (Int) -> Unit) {
             val w = size.width
             val h = size.height
             drawRoundRect(Color(0xFF183B2D), size = Size(w, h), cornerRadius = androidx.compose.ui.geometry.CornerRadius(18f, 18f))
-            drawCircle(Color(0xFF24533D), radius = w * 0.18f, center = Offset(w * 0.82f, h * 0.18f))
+            // Чистый фон без крупных декоративных кругов — поле и блоки читаются лучше.
             val blockW = w * 0.25f
             val blockH = h * 0.085f
             val baseX = w * 0.375f
@@ -230,9 +230,9 @@ private fun JumpGame(onScore: (Int) -> Unit) {
             val w = size.width
             val h = size.height
             drawRoundRect(color = Color(0xFF183B2D), size = Size(w, h), cornerRadius = androidx.compose.ui.geometry.CornerRadius(22f, 22f))
-            // sky and distant hills
-            drawCircle(color = Color(0xFF24533D), radius = w * 0.22f, center = Offset(w * 0.82f, h * 0.22f))
-            drawCircle(color = Color(0xFF1D4935), radius = w * 0.28f, center = Offset(w * 0.12f, h * 0.84f))
+            // Небольшие декоративные элементы не перекрывают игровую область.
+            drawCircle(color = Color(0xFF24533D), radius = w * 0.035f, center = Offset(w * 0.86f, h * 0.16f))
+            drawCircle(color = Color(0xFF1D4935), radius = w * 0.045f, center = Offset(w * 0.10f, h * 0.24f))
             val groundY = h * 0.82f
             drawLine(color = gameGreen, start = Offset(0f, groundY), end = Offset(w, groundY), strokeWidth = 5f)
             val playerX = w * 0.20f
