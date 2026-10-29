@@ -43,12 +43,22 @@ fun MiniGamesSection() {
                 Card(modifier = Modifier.fillMaxWidth().clickable { selected = game.first },
                     colors = CardDefaults.cardColors(containerColor = gamePanel), shape = RoundedCornerShape(20.dp)) {
                     Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            Text(game.second, color = gameGreen, fontWeight = FontWeight.Bold, fontSize = 17.sp)
-                            Text(game.third, color = gameMuted, fontSize = 13.sp)
-                            bestScores[game.first]?.let { Text("Рекорд: " + it, color = Color.White, fontSize = 12.sp) }
+                        Surface(
+                            modifier = Modifier.size(48.dp),
+                            color = Color(0xFF183B2D),
+                            shape = RoundedCornerShape(15.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Text(game.second.substringBefore(" ").take(2), fontSize = 22.sp)
+                            }
                         }
-                        Text("Играть  ›", color = gameGreen, fontWeight = FontWeight.Bold)
+                        Spacer(Modifier.width(12.dp))
+                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Text(game.second.substringAfter(" "), color = gameGreen, fontWeight = FontWeight.Bold, fontSize = 17.sp)
+                            Text(game.third, color = gameMuted, fontSize = 13.sp)
+                            bestScores[game.first]?.let { Text("🏆 Рекорд: " + it, color = Color(0xFFFFD166), fontSize = 12.sp, fontWeight = FontWeight.SemiBold) }
+                        }
+                        Text("Играть  ›", color = gameGreen, fontWeight = FontWeight.Bold, fontSize = 12.sp)
                     }
                 }
             }
