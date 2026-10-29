@@ -102,27 +102,58 @@ private fun TowerGame(onScore: (Int) -> Unit) {
 @Composable
 private fun RaceGame(onScore: (Int) -> Unit) {
     var lane by remember { mutableIntStateOf(1) }
-    var obstacle by remember { mutableIntStateOf(Random.nextInt(3)) }
+    var obstacleLane by remember { mutableIntStateOf(Random.nextInt(3)) }
+    var obstacleY by remember { mutableFloatStateOf(0.12f) }
     var score by remember { mutableIntStateOf(0) }
     var crashed by remember { mutableStateOf(false) }
-    GameCard("🏎️ Мини-гонки", "Перестраивайся между тремя полосами и избегай препятствий.") {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            (0..2).forEach { i ->
-                Surface(modifier = Modifier.weight(1f).height(110.dp), color = if (lane == i) gamePanel2 else Color(0xFF17221D), shape = RoundedCornerShape(12.dp)) {
-                    Box(contentAlignment = Alignment.Center) { Text(if (obstacle == i && !crashed) "🚧" else if (lane == i) "🏎️" else "·", fontSize = 30.sp) }
+
+    LaunchedEffect(crashed) {
+        while (!crashed) {
+            delay(55)
+            obstacleY += 0.025f + (score.coerceAtMost(20) * 0.001f)
+            if (obstacleY > 0.78f) {
+                if (lane == obstacleLane) {
+                    crashed = true
+                    onScore(score)
+                } else {
+                    score++
+                    obstacleLane = Random.nextInt(3)
+                    obstacleY = 0.12f
                 }
             }
         }
-        Text("Очки: " + score, color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
-        if (crashed) Text("Столкновение! Попробуй ещё раз.", color = gameMuted)
-        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            GameButton("←", { if (crashed) { score = 0; crashed = false; lane = 1; obstacle = Random.nextInt(3) } else lane = (lane - 1).coerceAtLeast(0) }, Modifier.weight(1f))
-            GameButton(if (crashed) "Заново" else "Вперёд", {
-                if (crashed) { score = 0; crashed = false; lane = 1; obstacle = Random.nextInt(3) }
-                else if (lane == obstacle) { crashed = true; onScore(score) }
-                else { score++; obstacle = Random.nextInt(3) }
-            }, Modifier.weight(2f))
-            GameButton("→", { if (!crashed) lane = (lane + 1).coerceAtMost(2) }, Modifier.weight(1f))
+    }
+
+    GameCard("🏎️ Мини-гонки", "Управляй машиной на трёх полосах и уворачивайся от конусов.") {
+        Canvas(Modifier.fillMaxWidth().height(250.dp)) {
+            val w = size.width
+            val h = size.height
+            drawRoundRect(Color(0xFF26352F), size = Size(w, h), cornerRadius = androidx.compose.ui.geometry.CornerRadius(18f, 18f))
+            val roadLeft = w * 0.12f
+            val roadWidth = w * 0.76f
+            drawRect(Color(0xFF37443E), topLeft = Offset(roadLeft, 0f), size = Size(roadWidth, h))
+            for (i in 1..2) {
+                val x = roadLeft + roadWidth * i / 3f
+                for (j in 0..5) {
+                    val y = (j * h / 5f + (score * 13f % (h / 5f))) % h
+                    drawRoundRect(Color(0xFFB7C8BE), topLeft = Offset(x - 2f, y), size = Size(4f, h * 0.07f), cornerRadius = androidx.compose.ui.geometry.CornerRadius(3f, 3f))
+                }
+            }
+            val laneCenter = roadLeft + roadWidth * (lane + 0.5f) / 3f
+            val oy = h * obstacleY
+            val obstacleX = roadLeft + roadWidth * (obstacleLane + 0.5f) / 3f
+            drawRoundRect(Color(0xFFFFB547), topLeft = Offset(obstacleX - 15f, oy - 18f), size = Size(30f, 36f), cornerRadius = androidx.compose.ui.geometry.CornerRadius(7f, 7f))
+            drawRoundRect(Color(0xFFE7F4EE), topLeft = Offset(laneCenter - 20f, h * 0.72f), size = Size(40f, 62f), cornerRadius = androidx.compose.ui.geometry.CornerRadius(10f, 10f))
+            drawRoundRect(Color(0xFF73BDF2), topLeft = Offset(laneCenter - 13f, h * 0.74f), size = Size(26f, 17f), cornerRadius = androidx.compose.ui.geometry.CornerRadius(5f, 5f))
+            drawCircle(Color(0xFF101915), radius = 5f, center = Offset(laneCenter - 15f, h * 0.77f))
+            drawCircle(Color(0xFF101915), radius = 5f, center = Offset(laneCenter + 15f, h * 0.77f))
+        }
+        Text("Очки: $score", color = gameGreen, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+        if (crashed) Text("💥 Столкновение! Попробуй ещё раз.", color = Color.White)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            GameButton("←", { if (crashed) { score = 0; lane = 1; obstacleLane = Random.nextInt(3); obstacleY = 0.12f; crashed = false } else lane = (lane - 1).coerceAtLeast(0) }, Modifier.weight(1f))
+            GameButton(if (crashed) "Заново" else "🚗", { if (crashed) { score = 0; lane = 1; obstacleLane = Random.nextInt(3); obstacleY = 0.12f; crashed = false } }, Modifier.weight(1f))
+            GameButton("→", { if (crashed) { score = 0; lane = 1; obstacleLane = Random.nextInt(3); obstacleY = 0.12f; crashed = false } else lane = (lane + 1).coerceAtMost(2) }, Modifier.weight(1f))
         }
     }
 }
