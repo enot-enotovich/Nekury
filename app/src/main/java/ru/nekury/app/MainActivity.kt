@@ -154,6 +154,37 @@ class MainActivity : ComponentActivity() {
                                     Metric("Не выкурено", "$avoided", "сигарет", Modifier.weight(1f))
                                     Metric("Сэкономлено", formatRubles(saved), "примерно", Modifier.weight(1f))
                                 }
+                                Card(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    colors = CardDefaults.cardColors(containerColor = Color(0xFF123528)),
+                                    shape = RoundedCornerShape(24.dp)
+                                ) {
+                                    Column(
+                                        Modifier.fillMaxWidth().padding(18.dp),
+                                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                                    ) {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Surface(color = Color(0xFF245640), shape = RoundedCornerShape(14.dp)) {
+                                                Icon(Icons.Default.Bolt, null, tint = green, modifier = Modifier.padding(10.dp).size(25.dp))
+                                            }
+                                            Spacer(Modifier.width(12.dp))
+                                            Column(Modifier.weight(1f)) {
+                                                Text("ТЯГА ПОДКРАЛАСЬ?", color = green, fontWeight = FontWeight.Black, fontSize = 18.sp)
+                                                Text("Пережди волну — всего несколько минут", color = muted, fontSize = 13.sp)
+                                            }
+                                        }
+                                        Button(
+                                            onClick = { tab = 3 },
+                                            modifier = Modifier.fillMaxWidth().height(52.dp),
+                                            shape = RoundedCornerShape(16.dp),
+                                            colors = ButtonDefaults.buttonColors(containerColor = green)
+                                        ) {
+                                            Icon(Icons.Default.SportsEsports, null, tint = bg)
+                                            Spacer(Modifier.width(8.dp))
+                                            Text("Запустить игровую паузу", color = bg, fontWeight = FontWeight.Bold)
+                                        }
+                                    }
+                                }
                                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                                     Metric("Без сигарет", "$days дн.", "твой прогресс", Modifier.weight(1f))
                                     Metric("Пережил тягу", "$cravingCount", "раз", Modifier.weight(1f))
