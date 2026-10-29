@@ -212,6 +212,7 @@ class MainActivity : ComponentActivity() {
                             3 -> {
                                 SectionTitle("Хочется курить?")
                                 Text("Тяга обычно приходит волной и постепенно ослабевает. Выбери упражнение и отложи решение на несколько минут.", color = muted)
+                                MiniGamesSection()
                                 Card(colors = CardDefaults.cardColors(containerColor = panel2), shape = RoundedCornerShape(22.dp)) {
                                     Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                                         Text("Мини-игра 1 · Дыхание 4–4–6", color = green, fontSize = 18.sp, fontWeight = FontWeight.Bold)
