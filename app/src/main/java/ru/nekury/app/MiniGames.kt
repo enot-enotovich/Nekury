@@ -86,15 +86,53 @@ private fun GameButton(label: String, onClick: () -> Unit, modifier: Modifier = 
 @Composable
 private fun TowerGame(onScore: (Int) -> Unit) {
     var height by remember { mutableIntStateOf(0) }
+    var blockX by remember { mutableFloatStateOf(0.18f) }
+    var direction by remember { mutableIntStateOf(1) }
     var ended by remember { mutableStateOf(false) }
-    GameCard("🏗️ Башня", "Нажимай, чтобы поставить блок. Чем выше башня, тем сложнее!") {
-        Text("▰".repeat(height.coerceAtMost(12) + 1), fontSize = 28.sp, color = gameGreen)
-        Text("Высота: " + height, color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Bold)
-        if (ended) Text("Башня закончилась! Результат: " + height, color = gameMuted)
-        GameButton(if (ended) "Построить заново" else "Поставить блок", {
-            if (ended) { height = 0; ended = false }
-            else if (Random.nextInt(100) < (10 + height * 5).coerceAtMost(85)) { ended = true; onScore(height) }
-            else height++
+
+    LaunchedEffect(ended) {
+        while (!ended) {
+            delay(28)
+            blockX += direction * (0.012f + height * 0.0008f)
+            if (blockX > 0.72f) { blockX = 0.72f; direction = -1 }
+            if (blockX < 0.08f) { blockX = 0.08f; direction = 1 }
+        }
+    }
+
+    GameCard("🏗️ Башня", "Нажми «Поставить блок», когда движущийся блок окажется над башней.") {
+        Canvas(Modifier.fillMaxWidth().height(240.dp)) {
+            val w = size.width
+            val h = size.height
+            drawRoundRect(Color(0xFF183B2D), size = Size(w, h), cornerRadius = androidx.compose.ui.geometry.CornerRadius(18f, 18f))
+            drawCircle(Color(0xFF24533D), radius = w * 0.18f, center = Offset(w * 0.82f, h * 0.18f))
+            val blockW = w * 0.25f
+            val blockH = h * 0.085f
+            val baseX = w * 0.375f
+            val visible = height.coerceAtMost(7)
+            for (i in 0 until visible) {
+                val y = h * 0.86f - (i + 1) * blockH
+                drawRoundRect(Color(0xFF278E67), topLeft = Offset(baseX, y), size = Size(blockW, blockH - 3f), cornerRadius = androidx.compose.ui.geometry.CornerRadius(5f, 5f))
+            }
+            val movingY = h * 0.86f - (visible + 1) * blockH
+            drawRoundRect(gameGreen, topLeft = Offset(w * blockX, movingY), size = Size(blockW, blockH - 3f), cornerRadius = androidx.compose.ui.geometry.CornerRadius(5f, 5f))
+            drawLine(Color(0xFF9CB8AA), start = Offset(w * 0.1f, h * 0.86f), end = Offset(w * 0.9f, h * 0.86f), strokeWidth = 4f)
+        }
+        Text("Высота: $height", color = gameGreen, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+        if (ended) Text("Башня остановилась! Результат: $height", color = Color.White)
+        GameButton(if (ended) "Играть снова" else "Поставить блок", {
+            if (ended) {
+                height = 0; blockX = 0.18f; direction = 1; ended = false
+            } else {
+                val distance = kotlin.math.abs(blockX - 0.375f)
+                if (distance < (0.22f - height.coerceAtMost(10) * 0.012f)) {
+                    height++
+                    blockX = 0.18f
+                    direction = 1
+                } else {
+                    ended = true
+                    onScore(height)
+                }
+            }
         }, Modifier.fillMaxWidth())
     }
 }
