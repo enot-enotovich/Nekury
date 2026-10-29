@@ -17,6 +17,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.datastore.preferences.core.doublePreferencesKey
@@ -29,6 +31,8 @@ import java.util.concurrent.TimeUnit
 import java.util.Locale
 import java.text.NumberFormat
 import java.util.Currency
+import java.text.SimpleDateFormat
+import java.util.Date
 
 private val ComponentActivity.dataStore by preferencesDataStore(name = "nekury")
 private val startedKey = longPreferencesKey("quit_started")
@@ -55,6 +59,11 @@ class MainActivity : ComponentActivity() {
             var relapseCount by remember { mutableIntStateOf(0) }
             var note by remember { mutableStateOf("") }
             var showSettings by remember { mutableStateOf(false) }
+            var quitDateText by remember { mutableStateOf("") }
+            var priceText by remember { mutableStateOf("300") }
+            var perDayText by remember { mutableStateOf("15") }
+            var packText by remember { mutableStateOf("20") }
+            var dateError by remember { mutableStateOf(false) }
             var tick by remember { mutableLongStateOf(System.currentTimeMillis()) }
             LaunchedEffect(Unit) {
                 while (true) {
@@ -63,10 +72,16 @@ class MainActivity : ComponentActivity() {
                 }
             }
             val started = prefs?.get(startedKey) ?: tick
+            LaunchedEffect(started) {
+                quitDateText = SimpleDateFormat("dd.MM.yyyy", Locale("ru", "RU")).format(Date(started))
+            }
             val storedPrice = prefs?.get(priceKey) ?: 300.0
             val price = if (storedPrice < 100.0) 300.0 else storedPrice
+            LaunchedEffect(price) { priceText = price.toInt().toString() }
             val perDay = prefs?.get(perDayKey) ?: 15
+            LaunchedEffect(perDay) { perDayText = perDay.toString() }
             val pack = prefs?.get(packKey) ?: 20
+            LaunchedEffect(pack) { packText = pack.toString() }
             val elapsed = (tick - started).coerceAtLeast(0)
             val days = TimeUnit.MILLISECONDS.toDays(elapsed)
             val hours = TimeUnit.MILLISECONDS.toHours(elapsed) % 24
@@ -91,6 +106,37 @@ class MainActivity : ComponentActivity() {
                                 Text("БЕЗ СИГАРЕТ", color = green, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                                 Text("${days}д ${hours}ч ${minutes}м", color = Color.White, fontSize = 34.sp, fontWeight = FontWeight.Bold)
                                 Text("Ты справляешься. Продолжай!", color = Color.LightGray)
+                                Spacer(Modifier.height(12.dp))
+                                OutlinedTextField(
+                                    value = quitDateText,
+                                    onValueChange = { quitDateText = it; dateError = false },
+                                    label = { Text("Дата отказа (дд.мм.гггг)") },
+                                    placeholder = { Text("01.01.2026") },
+                                    singleLine = true,
+                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                    isError = dateError,
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                                if (dateError) Text("Введите дату в формате дд.мм.гггг, не позднее сегодняшнего дня", color = MaterialTheme.colorScheme.error)
+                                OutlinedButton(onClick = {
+                                    try {
+                                        val formatter = SimpleDateFormat("dd.MM.yyyy", Locale("ru", "RU")).apply { isLenient = false }
+                                        val parsed = formatter.parse(quitDateText.trim()) ?: throw IllegalArgumentException()
+                                        val calendar = java.util.Calendar.getInstance().apply {
+                                            time = parsed
+                                            set(java.util.Calendar.HOUR_OF_DAY, 0)
+                                            set(java.util.Calendar.MINUTE, 0)
+                                            set(java.util.Calendar.SECOND, 0)
+                                            set(java.util.Calendar.MILLISECOND, 0)
+                                        }
+                                        val selected = calendar.timeInMillis
+                                        if (selected > System.currentTimeMillis()) throw IllegalArgumentException()
+                                        scope.launch { dataStore.edit { it[startedKey] = selected } }
+                                        dateError = false
+                                    } catch (_: Exception) { dateError = true }
+                                }, modifier = Modifier.fillMaxWidth()) {
+                                    Text("Установить дату отказа")
+                                }
                                 Spacer(Modifier.height(16.dp))
                                 Button(onClick = {
                                     scope.launch { dataStore.edit { it[startedKey] = System.currentTimeMillis() } }
@@ -153,25 +199,44 @@ class MainActivity : ComponentActivity() {
                             Text("Настройки")
                         }
                         if (showSettings) {
-                            Text("Цена пачки: " + formatRubles(price), color = Color.White)
-                            Slider(
-                                value = price.toFloat(),
-                                onValueChange = { value -> scope.launch { dataStore.edit { it[priceKey] = value.toDouble() } } },
-                                valueRange = 100f..1500f
+                            OutlinedTextField(
+                                value = priceText,
+                                onValueChange = { value ->
+                                    priceText = value
+                                    value.replace(',', '.').toDoubleOrNull()?.takeIf { it in 1.0..100000.0 }?.let { entered ->
+                                        scope.launch { dataStore.edit { it[priceKey] = entered } }
+                                    }
+                                },
+                                label = { Text("Цена пачки, ₽") },
+                                singleLine = true,
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                                modifier = Modifier.fillMaxWidth()
                             )
-                            Text("Сигарет в день: $perDay", color = Color.White)
-                            Slider(
-                                value = perDay.toFloat(),
-                                onValueChange = { value -> scope.launch { dataStore.edit { it[perDayKey] = value.toInt() } } },
-                                valueRange = 1f..60f,
-                                steps = 58
+                            OutlinedTextField(
+                                value = perDayText,
+                                onValueChange = { value ->
+                                    perDayText = value
+                                    value.toIntOrNull()?.takeIf { it in 1..200 }?.let { entered ->
+                                        scope.launch { dataStore.edit { it[perDayKey] = entered } }
+                                    }
+                                },
+                                label = { Text("Сигарет в день") },
+                                singleLine = true,
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                modifier = Modifier.fillMaxWidth()
                             )
-                            Text("Сигарет в пачке: $pack", color = Color.White)
-                            Slider(
-                                value = pack.toFloat(),
-                                onValueChange = { value -> scope.launch { dataStore.edit { it[packKey] = value.toInt() } } },
-                                valueRange = 10f..30f,
-                                steps = 19
+                            OutlinedTextField(
+                                value = packText,
+                                onValueChange = { value ->
+                                    packText = value
+                                    value.toIntOrNull()?.takeIf { it in 1..100 }?.let { entered ->
+                                        scope.launch { dataStore.edit { it[packKey] = entered } }
+                                    }
+                                },
+                                label = { Text("Сигарет в пачке") },
+                                singleLine = true,
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                modifier = Modifier.fillMaxWidth()
                             )
                         }
                         Text(
