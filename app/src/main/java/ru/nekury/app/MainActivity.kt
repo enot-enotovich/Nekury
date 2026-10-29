@@ -27,6 +27,8 @@ import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.launch
 import java.util.concurrent.TimeUnit
 import java.util.Locale
+import java.text.NumberFormat
+import java.util.Currency
 
 private val ComponentActivity.dataStore by preferencesDataStore(name = "nekury")
 private val startedKey = longPreferencesKey("quit_started")
@@ -36,6 +38,12 @@ private val packKey = intPreferencesKey("pack_size")
 private val green = Color(0xFF65E6A1)
 private val bg = Color(0xFF07110D)
 private val panel = Color(0xFF102019)
+
+private fun formatRubles(value: Double): String = NumberFormat.getCurrencyInstance(Locale("ru", "RU")).apply {
+    currency = Currency.getInstance("RUB")
+    minimumFractionDigits = 0
+    maximumFractionDigits = 2
+}.format(value)
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -55,7 +63,7 @@ class MainActivity : ComponentActivity() {
                 }
             }
             val started = prefs?.get(startedKey) ?: tick
-            val price = prefs?.get(priceKey) ?: 8.0
+            val price = prefs?.get(priceKey) ?: 300.0
             val perDay = prefs?.get(perDayKey) ?: 15
             val pack = prefs?.get(packKey) ?: 20
             val elapsed = (tick - started).coerceAtLeast(0)
@@ -91,7 +99,7 @@ class MainActivity : ComponentActivity() {
                             }
                         }
                         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                            Metric("Сэкономлено", String.format(Locale.US, "$%.2f", saved), Modifier.weight(1f))
+                            Metric("Сэкономлено", formatRubles(saved), Modifier.weight(1f))
                             Metric("Не выкурено", avoided.toString(), Modifier.weight(1f))
                         }
                         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -144,11 +152,11 @@ class MainActivity : ComponentActivity() {
                             Text("Настройки")
                         }
                         if (showSettings) {
-                            Text("Цена пачки: " + String.format(Locale.US, "$%.2f", price), color = Color.White)
+                            Text("Цена пачки: " + formatRubles(price), color = Color.White)
                             Slider(
                                 value = price.toFloat(),
                                 onValueChange = { value -> scope.launch { dataStore.edit { it[priceKey] = value.toDouble() } } },
-                                valueRange = 2f..30f
+                                valueRange = 100f..1500f
                             )
                             Text("Сигарет в день: $perDay", color = Color.White)
                             Slider(
