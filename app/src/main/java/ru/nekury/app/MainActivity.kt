@@ -70,6 +70,9 @@ class MainActivity : ComponentActivity() {
             var settingsInitialized by remember { mutableStateOf(false) }
             var noteInitialized by remember { mutableStateOf(false) }
             var tick by remember { mutableLongStateOf(System.currentTimeMillis()) }
+            var breathingStep by remember { mutableIntStateOf(0) }
+            var urgeSteps by remember { mutableIntStateOf(0) }
+            var focusTaps by remember { mutableIntStateOf(0) }
 
             LaunchedEffect(Unit) {
                 while (true) { delay(60_000); tick = System.currentTimeMillis() }
@@ -116,6 +119,8 @@ class MainActivity : ComponentActivity() {
                                 icon = { Icon(Icons.Default.BarChart, null) }, label = { Text("Статистика") })
                             NavigationBarItem(selected = tab == 2, onClick = { tab = 2 },
                                 icon = { Icon(Icons.Default.Settings, null) }, label = { Text("Настройки") })
+                            NavigationBarItem(selected = tab == 3, onClick = { tab = 3 },
+                                icon = { Icon(Icons.Default.SelfImprovement, null) }, label = { Text("Тяга") })
                         }
                     }
                 ) { padding ->
@@ -154,11 +159,19 @@ class MainActivity : ComponentActivity() {
                                     Metric("Пережил тягу", "$cravingCount", "раз", Modifier.weight(1f))
                                 }
                                 SectionTitle("Восстановление организма")
+                                Text("У всех организм восстанавливается по-разному. Это ориентировочные этапы, а не гарантия изменений ровно в указанный срок.", color = muted, fontSize = 13.sp)
                                 listOf(
-                                    "20 минут" to "Пульс и давление начинают снижаться",
-                                    "12 часов" to "Уровень угарного газа в крови снижается",
-                                    "2–12 недель" to "Улучшается кровообращение и функция лёгких",
-                                    "1 год" to "Снижается риск ишемической болезни сердца"
+                                    "Через 20 минут" to "Пульс начинает возвращаться к обычному уровню, давление может снижаться.",
+                                    "Через 8–12 часов" to "Уровень угарного газа в крови снижается, кровь лучше переносит кислород.",
+                                    "Через 24 часа" to "Уровень никотина заметно снижается; тяга и раздражительность могут усилиться.",
+                                    "Через 48 часов" to "Вкус и обоняние могут становиться ярче.",
+                                    "Через 72 часа" to "Некоторым становится легче дышать; возможны симптомы отмены.",
+                                    "Через 2–12 недель" to "Улучшается кровообращение, физическая нагрузка может переноситься легче.",
+                                    "Через 1–9 месяцев" to "У многих уменьшаются кашель и одышка, дыхательные пути лучше очищаются.",
+                                    "Через 1 год" to "Риск ишемической болезни сердца примерно вдвое ниже, чем при продолжении курения.",
+                                    "Через 5 лет" to "Риск инсульта может существенно снизиться.",
+                                    "Через 10 лет" to "Риск смерти от рака лёгкого примерно вдвое ниже, чем при продолжении курения.",
+                                    "Через 15 лет" to "Риск ишемической болезни сердца может приблизиться к уровню некурящего."
                                 ).forEach { (time, detail) -> InfoCard(time, detail) }
                                 SectionTitle("Дневник тяги")
                                 Text("Запиши, что чувствуешь — пережить желание станет проще.", color = muted, fontSize = 13.sp)
@@ -195,6 +208,52 @@ class MainActivity : ComponentActivity() {
                                 InfoCard(if (days >= 1) "Первый день" else "Первый шаг", if (days >= 1) "Уже целый день без сигарет — отлично!" else "Начни путь и отметь первый день без сигарет.")
                                 InfoCard(if (days >= 7) "Неделя свободы" else "Следующая цель: 7 дней", if (days >= 7) "Неделя позади. Продолжай!" else "Каждый час приближает тебя к этой цели.")
                                 InfoCard(if (avoided >= 100) "100 сигарет" else "Цель: 100 сигарет", if (avoided >= 100) "Ты уже избежал сотни сигарет." else "Скоро ты избежишь сотни сигарет.")
+                            }
+                            3 -> {
+                                SectionTitle("Хочется курить?")
+                                Text("Тяга обычно приходит волной и постепенно ослабевает. Выбери упражнение и отложи решение на несколько минут.", color = muted)
+                                Card(colors = CardDefaults.cardColors(containerColor = panel2), shape = RoundedCornerShape(22.dp)) {
+                                    Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                                        Text("Мини-игра 1 · Дыхание 4–4–6", color = green, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                                        Text(listOf("Спокойно вдохни на 4 счёта", "Если комфортно, задержи дыхание на 4", "Медленно выдохни на 6", "Отлично! Расслабь плечи и повтори")[breathingStep % 4], color = Color.White)
+                                        Button(onClick = { breathingStep++ }, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = green)) {
+                                            Text(if (breathingStep % 4 == 3) "Новый цикл" else "Следующий шаг", color = bg)
+                                        }
+                                    }
+                                }
+                                Card(colors = CardDefaults.cardColors(containerColor = panel), shape = RoundedCornerShape(22.dp)) {
+                                    Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                                        Text("Мини-игра 2 · Пережди волну", color = green, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                                        Text("Сделай 10 маленьких шагов: выпей воды, встань, пройдись или отвлекись. Каждый шаг — немного времени без сигареты.", color = muted)
+                                        LinearProgressIndicator(progress = { urgeSteps.coerceAtMost(10) / 10f }, modifier = Modifier.fillMaxWidth(), color = green)
+                                        Text("${urgeSteps.coerceAtMost(10)} из 10 шагов", color = Color.White)
+                                        Button(onClick = { urgeSteps = if (urgeSteps >= 10) 0 else urgeSteps + 1 }, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = green)) {
+                                            Text(if (urgeSteps >= 10) "Сыграть ещё раз" else "Сделал шаг!", color = bg)
+                                        }
+                                    }
+                                }
+                                Card(colors = CardDefaults.cardColors(containerColor = panel), shape = RoundedCornerShape(22.dp)) {
+                                    Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                                        Text("Мини-игра 3 · Найди 10 предметов", color = green, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                                        Text("Оглянись и найди вокруг себя 10 предметов одного цвета. Переключи внимание с желания на окружающий мир.", color = muted)
+                                        Text("$focusTaps / 10", color = green, fontSize = 26.sp, fontWeight = FontWeight.Bold)
+                                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                            Button(onClick = { focusTaps = (focusTaps + 1).coerceAtMost(10) }, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors(containerColor = green)) {
+                                                Text(if (focusTaps >= 10) "Готово!" else "Нашёл предмет", color = bg)
+                                            }
+                                            OutlinedButton(onClick = { focusTaps = 0 }, modifier = Modifier.weight(1f)) { Text("Заново") }
+                                        }
+                                    }
+                                }
+                                InfoCard("Если тяга не проходит", "Отойди от сигарет, выпей воды, напиши близкому или выйди на короткую прогулку. Срыв не отменяет предыдущие усилия.")
+                                Button(onClick = {
+                                    cravingCount++
+                                    scope.launch { dataStore.edit { it[cravingKey] = cravingCount } }
+                                    urgeSteps = 0
+                                    focusTaps = 0
+                                }, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = green)) {
+                                    Text("Я пережил тягу!", color = bg)
+                                }
                             }
                             else -> {
                                 SectionTitle("Настройки")
