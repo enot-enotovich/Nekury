@@ -63,7 +63,8 @@ class MainActivity : ComponentActivity() {
                 }
             }
             val started = prefs?.get(startedKey) ?: tick
-            val price = prefs?.get(priceKey) ?: 300.0
+            val storedPrice = prefs?.get(priceKey) ?: 300.0
+            val price = if (storedPrice < 100.0) 300.0 else storedPrice
             val perDay = prefs?.get(perDayKey) ?: 15
             val pack = prefs?.get(packKey) ?: 20
             val elapsed = (tick - started).coerceAtLeast(0)
